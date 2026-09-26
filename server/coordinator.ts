@@ -8,6 +8,12 @@ export function createCoordinatorRouter() {
   router.use(express.json({ limit: '50mb' }));
   router.use(express.raw({ type: 'application/octet-stream', limit: '50mb' }));
 
+  // Security Helper: Sanitize IDs and filenames against path traversal
+  const sanitizeId = (rawId: string): string => {
+    if (!rawId || typeof rawId !== 'string') return '';
+    return rawId.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+  };
+
   // Helper to get providers
   const getContext = async () => {
     const db = await getDatabaseProvider();
@@ -167,7 +173,10 @@ export function createCoordinatorRouter() {
   router.get('/objects/:objectId/download', async (req: Request, res: Response) => {
     try {
       const { db, storage } = await getContext();
-      const { objectId } = req.params;
+      const objectId = sanitizeId(req.params.objectId);
+      if (!objectId) {
+        return res.status(400).json({ error: 'Invalid objectId parameter' });
+      }
       const object = await db.getObject(objectId);
       if (!object) {
         return res.status(404).json({ error: `Object ${objectId} not found` });
