@@ -79,3 +79,149 @@ npm run build
 # Start local full-stack cluster
 npm run vault:dev
 ```
+## Testing & Validation
+
+Vault was tested locally using the multi-service distributed storage architecture consisting of a Coordinator API and four independent storage nodes.
+
+### Local Test Environment
+
+```text
+React / Vite Frontend
+        │
+        ▼
+Coordinator API :3000
+        │
+        ├── Storage Node 1 :5001
+        ├── Storage Node 2 :5002
+        ├── Storage Node 3 :5003
+        └── Storage Node 4 :5004
+
+The local environment was started using:
+
+npm install
+npm run vault:dev
+
+The system was configured with:
+
+DATABASE_MODE=sqlite
+STORAGE_MODE=local
+1. Object Upload & Storage
+
+A test object was uploaded through the Vault web interface with a configurable replication factor.
+
+The uploaded file was verified in the individual node storage directories:
+
+storage/
+├── node1/
+├── node2/
+├── node3/
+└── node4/
+
+The physical presence of the object on multiple nodes was checked to confirm replica creation.
+
+2. Replica Verification
+
+Objects were uploaded with a replication factor of 3.
+
+The system was verified to:
+
+Select multiple healthy storage nodes.
+Store actual object bytes on the selected nodes.
+Maintain replica metadata in the database.
+Report the current replica health and status through the dashboard.
+3. Node Failure & Failover
+
+A storage node was intentionally failed using the Vault failure-simulation functionality.
+
+The system was tested to verify that:
+
+The failed node was detected by the Coordinator.
+The affected object became temporarily under-replicated.
+The failed node was excluded from normal retrieval.
+The object could still be downloaded from a healthy replica.
+4. Automatic Replica Repair
+
+After intentionally failing a node, the automatic self-healing mechanism was observed.
+
+The repair process was verified to:
+
+Detect the missing replica.
+Select a healthy source replica.
+Select another available storage node.
+Transfer the object data.
+Verify the SHA-256 checksum.
+Update replica metadata.
+Restore the required replication factor.
+5. Data Corruption & Integrity Verification
+
+Replica corruption was simulated on a storage node.
+
+The integrity verification system was then used to:
+
+Read the actual stored object bytes.
+Calculate the SHA-256 checksum.
+Compare it against the canonical object checksum.
+Detect the corrupted replica.
+Mark the replica as unhealthy.
+Trigger replica repair.
+
+After repair, the replica checksum was verified against the canonical checksum.
+
+6. Network Partition Testing
+
+Network isolation was simulated for an individual storage node.
+
+The system was tested to ensure that:
+
+The Coordinator recognized the node as unavailable.
+The isolated node was excluded from normal retrieval.
+Healthy replicas remained available.
+Objects could still be retrieved from reachable replicas.
+The node could subsequently be recovered.
+7. Node Recovery
+
+A previously failed/isolated node was recovered and its state was checked against the cluster metadata.
+
+The recovery process was tested for:
+
+Node health restoration.
+Replica state reconciliation.
+Metadata consistency.
+Correct replication status after recovery.
+8. Rebalancing
+
+The cluster rebalancing functionality was tested by monitoring node utilization and initiating a rebalance operation.
+
+The system was verified to identify under-utilized storage nodes and redistribute replicas while maintaining the required replication level.
+
+9. Metadata Persistence
+
+The local deployment uses SQLite as the authoritative metadata store.
+
+The following information is persisted:
+
+Object metadata
+Replica locations
+Object versions
+Checksums
+Activity records
+Repair tasks
+Cluster configuration
+10. Test Summary
+Test	Result
+Object Upload	✅ Passed
+Multi-Node Replication	✅ Passed
+Object Retrieval	✅ Passed
+Node Failure Detection	✅ Passed
+Replica Failover	✅ Passed
+Automatic Replica Repair	✅ Passed
+SHA-256 Integrity Verification	✅ Passed
+Replica Corruption Detection	✅ Passed
+Network Partition Simulation	✅ Passed
+Node Recovery	✅ Passed
+Replica Reconciliation	✅ Passed
+Cluster Rebalancing	✅ Passed
+Metadata Persistence	✅ Passed
+Testing Approach
+
+The testing focused on validating the core requirements of the Vault problem statement rather than only testing the user interface. Particular attention was given to physical object persistence, replica availability, failure handling, checksum-based integrity verification, automatic repair, and metadata consistency.
